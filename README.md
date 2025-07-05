@@ -1,13 +1,20 @@
-# DDD é uma forma de conseguirmos manter uma comunicação clara e padronizada do desenvolvimento
+# DDD-Study
+Este e um projeto de estudo para pratica.
+Um espaco para praticar conceitos de testes e principalmente o DDD.
 
-## DDD (Domain-Driven-Design)
-Design dirigido à dominio
+## DDD é uma forma de conseguirmos manter uma comunicação clara e padronizada do desenvolvimento
+
+## O que e DDD
+DDD significa Domain-Driven-Design ou Design dirigido à dominio
 
 ### Design
-Design é como vamos transformar o problema do cliente a algo palpavel
+Design é como vamos transformar o problema do cliente a algo palpavel no mundo real
 
 ### Dominio
-- Domain Experts
-  - Conversas com os experts para criar uma linguagem ubiqua
-- Linguagem ubíqua
-  - Linguagem que todas pessoas envolvidas conseguem conversar por igual
+Dominio e o problema real traduzido no codigo que precisamos resolver e nele existe alguns conceitos importantes como:
+
+- Entidades
+- Objetos de valor
+- Servicos de dominio
+- Agregados
+- Repositorios
