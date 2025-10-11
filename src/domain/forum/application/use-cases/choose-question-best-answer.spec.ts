@@ -5,15 +5,25 @@ import { InMemoryAnswersRepository } from 'test/repositories/in-memory-answers-r
 
 import { ChooseQuestionBestAnswerUseCase } from './choose-question-best-answer'
 import { makeQuestion } from 'test/factories/make-question'
+import { NotAllowedError } from '@/core/errors/errors/not-allowed-error'
+import { InMemoryQuestionAttachmentsRepository } from 'test/repositories/in-memory-question-attachments-repository'
+import { InMemoryAnswerAttachmentsRepository } from 'test/repositories/in-memory-answer-attachments-repository'
 
 let inMemoryQuestionsRepository: InMemoryQuestionsRepository
+let inMemoryQuestionAttachmentsRepository: InMemoryQuestionAttachmentsRepository
+
 let inMemoryAnswersRepository: InMemoryAnswersRepository
+let inMemoryAnswerAttachmentsRepository: InMemoryAnswerAttachmentsRepository
+
 let sut: ChooseQuestionBestAnswerUseCase
 
 describe(`Choose Question Best Answer`, () => {
   beforeEach(() => {
-    inMemoryQuestionsRepository = new InMemoryQuestionsRepository()
-    inMemoryAnswersRepository = new InMemoryAnswersRepository()
+    inMemoryQuestionAttachmentsRepository = new InMemoryQuestionAttachmentsRepository()
+    inMemoryQuestionsRepository = new InMemoryQuestionsRepository(inMemoryQuestionAttachmentsRepository)
+    
+    inMemoryAnswerAttachmentsRepository = new InMemoryAnswerAttachmentsRepository()
+    inMemoryAnswersRepository = new InMemoryAnswersRepository(inMemoryAnswerAttachmentsRepository)
 
     sut = new ChooseQuestionBestAnswerUseCase(
       inMemoryQuestionsRepository,
@@ -51,12 +61,13 @@ describe(`Choose Question Best Answer`, () => {
 
     await inMemoryAnswersRepository.create(answer)
 
-    expect(
-      async () =>
-        await sut.execute({
-          answerId: answer.id.toString(),
-          authorId: `author-2`,
-        }),
-    ).rejects.toBeInstanceOf(Error)
+    const result = await sut.execute({
+      answerId: answer.id.toString(),
+      authorId: `author-2`,
+    })
+
+
+    expect(result.isLeft()).toEqual(true)
+    expect(result.value).toBeInstanceOf(NotAllowedError)
   })
 })

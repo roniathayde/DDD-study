@@ -1,50 +1,25 @@
-import type { AnswersRepository } from '../repositories/answers-repository'
-import { InMemoryAnswersRepository } from 'test/repositories/in-memory-answers-repository'
-import { makeAnswer } from 'test/factories/make-answer'
-import { UniqueEntityID } from '@/core/entities/unique-entity-id'
+import { InMemoryAnswersRepository } from "test/repositories/in-memory-answers-repository"
+import type { InMemoryQuestionsRepository } from "test/repositories/in-memory-questions-repository"
+import type { DeleteQuestionUseCase } from "./delete-question"
+import { EditAnswerUseCase } from "./edit-answer"
+import { makeAnswer } from "test/factories/make-answer"
+import { UniqueEntityID } from "@/core/entities/unique-entity-id"
+import { NotAllowedError } from "@/core/errors/errors/not-allowed-error"
+import { InMemoryAnswerAttachmentsRepository } from "test/repositories/in-memory-answer-attachments-repository"
+import { makeAnswerAttachment } from "test/factories/make-answer-attachment"
 
-interface EditAnswerUseCaseRequest {
-  authorId: string
-  answerId: string
-  content: string
-}
-
-interface EditAnswerUseCaseResponse {}
-
-export class EditAnswerUseCase {
-  constructor(private answersRepository: AnswersRepository) {}
-
-  async execute({
-    authorId,
-    answerId,
-    content,
-  }: EditAnswerUseCaseRequest): Promise<EditAnswerUseCaseResponse> {
-    const answer = await this.answersRepository.findById(answerId)
-
-    if (!answer) {
-      throw new Error(`Answer not found`)
-    }
-
-    if (authorId !== answer.authorId.toString()) {
-      throw new Error(`Not allowed`)
-    }
-
-    answer.content = content
-
-    await this.answersRepository.save(answer)
-
-    return {}
-  }
-}
-
+let inMemoryAnswerAttachmentsRepository: InMemoryAnswerAttachmentsRepository
 let inMemoryAnswersRepository: InMemoryAnswersRepository
 let sut: EditAnswerUseCase
 
 describe(`Delete answer`, () => {
   beforeEach(() => {
-    inMemoryAnswersRepository = new InMemoryAnswersRepository()
-
-    sut = new EditAnswerUseCase(inMemoryAnswersRepository) // System Under Test
+    inMemoryAnswerAttachmentsRepository = new InMemoryAnswerAttachmentsRepository()
+    inMemoryAnswersRepository = new InMemoryAnswersRepository(inMemoryAnswerAttachmentsRepository)
+    sut = new EditAnswerUseCase(
+      inMemoryAnswersRepository, 
+      inMemoryAnswerAttachmentsRepository
+    ) // System Under Test
   })
 
   it('should be able to delete a answer', async () => {
@@ -55,17 +30,34 @@ describe(`Delete answer`, () => {
       new UniqueEntityID(`answer-1`),
     )
 
+    makeAnswerAttachment({
+      answerId: newAnswer.id,
+      attachmentId: new UniqueEntityID('1')
+    })
+    
+    makeAnswerAttachment({
+      answerId: newAnswer.id,
+      attachmentId: new UniqueEntityID('2')
+    })
+
+
     inMemoryAnswersRepository.create(newAnswer)
 
     await sut.execute({
       answerId: newAnswer.id.toString(),
       authorId: `author-1`,
       content: `Conteudo teste`,
+      attachmentsIds: ['1','3']
     })
 
     expect(inMemoryAnswersRepository.items[0]).toMatchObject({
       content: `Conteudo teste`,
     })
+    expect(inMemoryAnswersRepository.items[0].attachments.currentItems).toHaveLength(2)
+    expect(inMemoryAnswersRepository.items[0].attachments.currentItems).toEqual([
+      expect.objectContaining({ attachmentId: new UniqueEntityID('1') }),
+      expect.objectContaining({ attachmentId: new UniqueEntityID('3')}),
+    ])
   })
 
   it('should not be able to delete a answer from another user', async () => {
@@ -78,13 +70,15 @@ describe(`Delete answer`, () => {
 
     inMemoryAnswersRepository.create(newAnswer)
 
-    expect(
-      async () =>
-        await sut.execute({
-          answerId: newAnswer.id.toString(),
-          authorId: `author-2`,
-          content: `conteudo teste`,
-        }),
-    ).rejects.toBeInstanceOf(Error)
+    const result = await sut.execute({
+      answerId: newAnswer.id.toString(),
+      authorId: `author-2`,
+      content: `conteudo teste`,
+      attachmentsIds: []
+    });
+    
+    
+    expect(result.isLeft()).toEqual(true)
+    expect(result.value).toBeInstanceOf(NotAllowedError)
   })
 })
